@@ -1,6 +1,7 @@
 -module(rotate_array).
 
 -export([rotate/1
+        ,protate/1
         ,make_square/1
         ]).
 
@@ -18,21 +19,20 @@ make_square(Length, ValueFun) ->
     }.
 
 rotate(Square) ->
-    multirec(fun is_len_one/1 %% indivisible
-            ,fun identity/1 %% value
-            ,fun divide_into_regions/1 %% divide
-            ,fun rotate_and_combine/1 %% combine
-            ,Square
-            ).
+    generics:multirec(fun is_len_one/1 %% indivisible
+                     ,fun identity/1 %% value
+                     ,fun divide_into_regions/1 %% divide
+                     ,fun rotate_and_combine/1 %% combine
+                     ,Square
+                     ).
 
-multirec(Indivisable, Value, Divide, Combine, Data) ->
-    case Indivisable(Data) of
-        'true' -> Value(Data);
-        'false' ->
-            Parts = Divide(Data),
-            MappedParts = lists:map(fun(Part) -> multirec(Indivisable, Value, Divide, Combine, Part) end, Parts),
-            Combine(MappedParts)
-    end.
+protate(Square) ->
+    generics:pmultirec(fun is_len_one/1 %% indivisible
+                      ,fun identity/1 %% value
+                      ,fun divide_into_regions/1 %% divide
+                      ,fun rotate_and_combine/1 %% combine
+                      ,Square
+                      ).
 
 %% rotate regions in pattern match
 %% [UL UR LR LL] => [UR LR LL UL]
@@ -168,6 +168,39 @@ divide4_test() ->
                  ]
                 ,Regions
                 ).
+
+protate4_test() ->
+    Square = {'square', 4, make_test_square(16, 4)},
+    Square90 = protate(Square),
+    ?assertEqual({'square', 4, [[13,9,5,1]
+                               ,[14,10,6,2]
+                               ,[15,11,7,3]
+                               ,[16,12,8,4]
+                               ]
+                 }
+                ,Square90
+                ),
+    Square180 = protate(Square90),
+    ?assertEqual({'square', 4, [[16,15,14,13]
+                               ,[12,11,10,9]
+                               ,[8,7,6,5]
+                               ,[4,3,2,1]
+                               ]
+                 }
+                ,Square180
+                ),
+    Square270 = protate(Square180),
+    ?assertEqual({'square', 4, [[4,8,12,16]
+                               ,[3,7,11,15]
+                               ,[2,6,10,14]
+                               ,[1,5,9,13]
+                               ]
+                 }
+                ,Square270
+                ),
+    Square360 = protate(Square270),
+    ?assertEqual(Square, Square360).
+
 
 make_test_square(N, Length) ->
     {Row, Square, _} = lists:foldl(fun make_test_square_row/2

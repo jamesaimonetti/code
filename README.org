@@ -1,0 +1,7 @@
+* Random code projects
+
+Putting code here that doesn't really have a home by itself, at least initially.
+
+** Rotate Squares
+
+Reading [[http://raganwald.com/2016/12/27/recursive-data-structures.html][this blog]] about recursive data structures and wanted to try the various implementations using Erlang

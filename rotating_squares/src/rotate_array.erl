@@ -5,8 +5,6 @@
         ,make_square/1
         ]).
 
--include_lib("eunit/include/eunit.hrl").
-
 make_square(Length) when Length rem 2 =:= 0 ->
     make_square(Length, fun() -> random:uniform(2)-1 end).
 
@@ -83,6 +81,8 @@ second_half(Array) ->
     lists:sublist(Array, (Length div 2) + 1, Length div 2).
 
 -ifdef(TEST).
+
+-include_lib("eunit/include/eunit.hrl").
 
 rotate2_test() ->
     Square = {'square', 2, [[1,2],[3,4]]},

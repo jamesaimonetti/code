@@ -1,3 +1,4 @@
 *.beam
 */.erlang.mk
 */ebin/test
+*.plt

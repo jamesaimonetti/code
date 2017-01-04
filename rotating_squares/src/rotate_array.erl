@@ -3,7 +3,13 @@
 -export([rotate/1
         ,protate/1
         ,make_square/1
+        ,divide_into_regions/1
+        ,combine/1
         ]).
+
+-ifdef(TEST).
+-export([make_test_square/2]).
+-endif.
 
 make_square(Length) when Length rem 2 =:= 0 ->
     make_square(Length, fun() -> random:uniform(2)-1 end).
@@ -35,6 +41,9 @@ protate(Square) ->
 %% rotate regions in pattern match
 %% [UL UR LR LL] => [UR LR LL UL]
 rotate_and_combine([UpperRight, LowerRight, LowerLeft, UpperLeft]) ->
+    combine([UpperLeft, UpperRight, LowerRight, LowerLeft]).
+
+combine([UpperLeft, UpperRight, LowerRight, LowerLeft]) ->
     UpperHalf = square_zipwith(fun concat/2, UpperLeft, UpperRight),
     LowerHalf = square_zipwith(fun concat/2, LowerLeft, LowerRight),
 

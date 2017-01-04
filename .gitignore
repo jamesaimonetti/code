@@ -2,3 +2,4 @@
 */.erlang.mk
 */ebin/test
 *.plt
+*/deps/

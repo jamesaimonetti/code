@@ -3,3 +3,4 @@
 */ebin/test
 *.plt
 */deps/
+cycliq/priv/

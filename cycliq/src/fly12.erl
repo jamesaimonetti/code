@@ -1,8 +1,13 @@
 -module(fly12).
 
--export([grab_clip/1]).
+-export([grab_clip/1
+        ,clip_seconds/0
+        ]).
 
 -include("cycliq.hrl").
+
+clip_seconds() -> 300. %% 5 minutes
+
 
 grab_clip(Filename) ->
     clip_metadata(Filename).
@@ -25,6 +30,7 @@ clip_metadata(Filename) ->
          ,hour=hour([H1, H2])
          ,minute=minute([M1, M2])
          ,index=index(Index)
+         ,module=?MODULE
          }.
 
 year([_, _, _, _] = YearList) ->

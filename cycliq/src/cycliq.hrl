@@ -1,7 +1,6 @@
 
 
 %% each clip is up to 5 minutes long
--define(CLIP_SECONDS, 300).
 -define(CLIP_PATH, "clips").
 -define(RIDE_PATH, "rides").
 
@@ -16,6 +15,7 @@
               ,minute :: 0..59
               ,index :: pos_integer() | 'undefined'
               ,gregorian_seconds :: gregorian_seconds() | 'undefined'
+              ,module :: atom()
               }).
 -type clip() :: #clip{}.
 

@@ -5,6 +5,7 @@
 -include("cycliq.hrl").
 
 process(CameraType) ->
+    io:format("grabbing files for ~s~n", [CameraType]),
     %% grab listing of all files on memory card
     Clips = grab_clips(CameraType),
     io:format("clips: ~p~n", [Clips]),
@@ -117,16 +118,21 @@ add_clips_to_ride(Ride, [LastClip | _]=RideClips) ->
              }.
 
 %% 5 minutes between clip timestamps for same ride
-clip_in_ride(NextClip, PreviosClip) ->
-    ?CLIP_SECONDS =:= (start_seconds_from_clip(NextClip) - start_seconds_from_clip(PreviosClip)).
+clip_in_ride(#clip{module=M}=NextClip, PreviosClip) ->
+    M:clip_seconds() =:= (start_seconds_from_clip(NextClip) - start_seconds_from_clip(PreviosClip)).
 
 start_seconds_from_clip(#clip{gregorian_seconds='undefined'}=Clip) ->
     calendar:datetime_to_gregorian_seconds(start_time_from_clip(Clip));
 start_seconds_from_clip(#clip{gregorian_seconds=GS}) -> GS.
 
-end_seconds_from_clip(#clip{gregorian_seconds='undefined'}=Clip) ->
-    calendar:datetime_to_gregorian_seconds(start_time_from_clip(Clip)) + ?CLIP_SECONDS;
-end_seconds_from_clip(#clip{gregorian_seconds=GS}) -> GS + ?CLIP_SECONDS.
+end_seconds_from_clip(#clip{gregorian_seconds='undefined'
+                           ,module=M
+                           }=Clip) ->
+    calendar:datetime_to_gregorian_seconds(start_time_from_clip(Clip)) + M:clip_seconds();
+end_seconds_from_clip(#clip{gregorian_seconds=GS
+                           ,module=M
+                           }) ->
+    GS + M:clip_seconds().
 
 start_time_from_clip(#clip{year=Y, month=Mo, day=D, hour=H, minute=M}) ->
     {{Y, Mo, D}, {H, M, 0}}.
@@ -136,7 +142,7 @@ grab_clips(CameraType) ->
     Module = list_to_atom(CameraType),
 
     {Module, Clips} = filelib:fold_files("/mnt/DCIM"
-                                        ,"\\d+_\\d+\.MP4$"
+                                        ,".+\.[MP4|AVI]$"
                                         ,'true'
                                         ,fun grab_clip/2
                                         ,{Module, []}
@@ -144,6 +150,7 @@ grab_clips(CameraType) ->
     lists:keysort(#clip.orig_path, Clips).
 
 grab_clip(Filename, {Module, Acc}) ->
+    io:format("grabbing ~s~n", [Filename]),
     Clip = Module:grab_clip(Filename),
     {Module, [Clip#clip{archive_path=archive_clip(Filename)
                        ,gregorian_seconds=start_seconds_from_clip(Clip)

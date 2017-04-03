@@ -1,33 +1,37 @@
 -module(cycliq).
 
--export([process/1]).
+-export([archive/2
+        ,stitch/0
+        ]).
 
 -include("cycliq.hrl").
 
-process(CameraType) ->
-    io:format("grabbing files for ~s~n", [CameraType]),
+archive(CameraType, Path) ->
+    Clips = grab_clips(CameraType, Path),
+    io:format("archived clips: ~p~n", [Clips]).
+
+stitch() ->
+    Clips = grab_clips_from_archive(),
     %% grab listing of all files on memory card
-    Clips = grab_clips(CameraType),
-    io:format("clips: ~p~n", [Clips]),
 
     %% sort into probable rides
     Rides = sort_clips_into_rides(Clips),
     io:format("rides: ~p~n", [Rides]),
 
     %% ask ffmpeg to concat them into a single file
-    _ = create_ride_videos(CameraType, Rides),
+    _ = create_ride_videos(Rides),
 
     %% check if fly12 + fly6 videos exist for same date range
     %%   Picture-in-picture if so
     'ok'.
 
-create_ride_videos(CameraType, Rides) ->
-    [create_ride_video(CameraType, Ride) || Ride <- Rides].
+create_ride_videos(Rides) ->
+    [create_ride_video(Ride) || Ride <- Rides].
 
-create_ride_video(CameraType
-                 ,#ride{clips=Clips
+create_ride_video(#ride{clips=Clips
                        ,start_time=Start
                        ,end_time=End
+                       ,camera_type=CameraType
                        }) ->
     VideoName = ride_video_name(CameraType, Start, End),
     case filelib:is_regular(VideoName) of
@@ -109,8 +113,10 @@ sort_clips_into_rides([Clip | Clips], {Ride, [RideClip | _]=RideClips}, Rides) -
                                  )
     end.
 
-new_ride_from_clip(Clip) ->
-    #ride{start_time = start_seconds_from_clip(Clip)}.
+new_ride_from_clip(#clip{module=M}=Clip) ->
+    #ride{start_time = start_seconds_from_clip(Clip)
+         ,camera_type = atom_to_list(M)
+         }.
 
 add_clips_to_ride(Ride, [LastClip | _]=RideClips) ->
     Ride#ride{clips=lists:reverse(RideClips)
@@ -137,11 +143,11 @@ end_seconds_from_clip(#clip{gregorian_seconds=GS
 start_time_from_clip(#clip{year=Y, month=Mo, day=D, hour=H, minute=M}) ->
     {{Y, Mo, D}, {H, M, 0}}.
 
--spec grab_clips(string()) -> [clip()].
-grab_clips(CameraType) ->
+-spec grab_clips(string(), file:filename_all()) -> [clip()].
+grab_clips(CameraType, Path) ->
     Module = list_to_atom(CameraType),
 
-    {Module, Clips} = filelib:fold_files("/mnt/DCIM"
+    {Module, Clips} = filelib:fold_files(Path
                                         ,".+\.[MP4|AVI]$"
                                         ,'true'
                                         ,fun grab_clip/2
@@ -149,20 +155,62 @@ grab_clips(CameraType) ->
                                         ),
     lists:keysort(#clip.orig_path, Clips).
 
+grab_clips_from_archive() ->
+    filelib:fold_files(clip_archive()
+                      ,".*"
+                      ,fun grab_archive_clip/2
+                      ,[]
+                      ).
+
+grab_archive_clip(Filename, Acc) ->
+    [archive_clip_meta(list_to_binary(Filename))
+     | Acc
+    ].
+
+archive_clip_meta(<<"fly12_", Year:4/binary, "-", Month:2/binary, "-", Day:2/binary
+                    ,"_", Hour:2/binary, ":", Minute:2/binary
+                    ,"_", Index:1/binary
+                    ,_/binary
+                  >>
+                 ) ->
+    Clip = #clip{year=binary_to_integer(Year)
+                ,month=binary_to_integer(Month)
+                ,day=binary_to_integer(Day)
+                ,hour=binary_to_integer(Hour)
+                ,minute=binary_to_integer(Minute)
+                ,index=binary_to_integer(Index)
+                ,module='fly12'
+                },
+    Clip#clip{gregorian_seconds=start_seconds_from_clip(Clip)};
+archive_clip_meta(<<"fly6_", Year:4/binary, "-", Month:2/binary, "-", Day:2/binary
+                    ,"_", Hour:2/binary, ":", Minute:2/binary
+                    ,"_", Index:1/binary
+                    ,_/binary
+                  >>
+                 ) ->
+    Clip = #clip{year=binary_to_integer(Year)
+                ,month=binary_to_integer(Month)
+                ,day=binary_to_integer(Day)
+                ,hour=binary_to_integer(Hour)
+                ,minute=binary_to_integer(Minute)
+                ,index=binary_to_integer(Index)
+                ,module='fly6'
+                },
+    Clip#clip{gregorian_seconds=start_seconds_from_clip(Clip)}.
+
 grab_clip(Filename, {Module, Acc}) ->
     io:format("grabbing ~s~n", [Filename]),
     Clip = Module:grab_clip(Filename),
-    {Module, [Clip#clip{archive_path=archive_clip(Filename)
+    {Module, [Clip#clip{archive_path=archive_clip(Clip, Filename)
                        ,gregorian_seconds=start_seconds_from_clip(Clip)
                        }
               | Acc
              ]}.
 
--spec archive_clip(file:filename_all()) -> file:filename_all().
-archive_clip(Filename) ->
-    Priv = code:priv_dir('cycliq'),
-    Basename = filename:basename(Filename),
-    ArchivePath = filename:join([Priv, ?CLIP_PATH, Basename]),
+-spec archive_clip(clip(), file:filename_all()) -> file:filename_all().
+archive_clip(Clip, Filename) ->
+    ArchivedClipName = archive_clip_name(Clip),
+    ArchivePath = filename:join([clip_archive(), ArchivedClipName]),
 
     'ok' = filelib:ensure_dir(ArchivePath),
 
@@ -174,3 +222,24 @@ archive_clip(Filename) ->
             'ok'
     end,
     ArchivePath.
+
+archive_clip_name(#clip{year=Year
+                       ,month=Month
+                       ,day=Day
+                       ,hour=Hour
+                       ,minute=Minute
+                       ,index=Index
+                       ,module=Module
+                       ,orig_path=OrigFilename
+                       }
+                 ) ->
+    Ext = filename:extension(OrigFilename),
+    iolist_to_binary(
+      io_lib:format("~s_~p-~p-~p_~p:~p_~p.~s"
+                   ,[Module, Year, Month, Day, Hour, Minute, Index, Ext]
+                   )
+     ).
+
+
+clip_archive() ->
+    filename:join([code:priv_dir('cycliq'), ?CLIP_PATH]).

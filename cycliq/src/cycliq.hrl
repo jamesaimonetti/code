@@ -22,5 +22,6 @@
 -record(ride, {clips = [] :: [clip()]
               ,start_time :: gregorian_seconds() | 'undefined'
               ,end_time :: gregorian_seconds() | 'undefined'
+              ,camera_type :: string()
               }).
 -type ride() :: #ride{}.

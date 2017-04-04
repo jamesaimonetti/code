@@ -148,6 +148,7 @@ start_time_from_clip(#clip{year=Y, month=Mo, day=D, hour=H, minute=M}) ->
 grab_clips(CameraType, Path) ->
     Module = list_to_atom(CameraType),
 
+    io:format("getting clips from ~p for ~p~n", [Path, CameraType]),
     {Module, Clips} = filelib:fold_files(Path
                                         ,".+\.[MP4|AVI]$"
                                         ,'true'
@@ -165,9 +166,9 @@ grab_clips_from_archive() ->
                       ).
 
 grab_archive_clip(Filename, Acc) ->
-    case archive_clip_meta(list_to_binary(Filename)) of
+    case archive_clip_meta(list_to_binary(filename:basename(Filename))) of
         'undefined' -> Acc;
-        Clip -> [Clip | Acc]
+        Clip -> [Clip#clip{archive_path=Filename} | Acc]
     end.
 
 archive_clip_meta(<<"fly12_", Year:4/binary, "-", Month:2/binary, "-", Day:2/binary
@@ -206,12 +207,15 @@ archive_clip_meta(_Filename) ->
 
 grab_clip(Filename, {Module, Acc}) ->
     io:format("grabbing ~s~n", [Filename]),
-    Clip = Module:grab_clip(Filename),
-    {Module, [Clip#clip{archive_path=archive_clip(Clip, Filename)
-                       ,gregorian_seconds=start_seconds_from_clip(Clip)
-                       }
-              | Acc
-             ]}.
+    case Module:grab_clip(Filename) of
+        'undefined' -> {Module, Acc};
+        Clip ->
+            {Module, [Clip#clip{archive_path=archive_clip(Clip, Filename)
+                               ,gregorian_seconds=start_seconds_from_clip(Clip)
+                               }
+                      | Acc
+                     ]}
+    end.
 
 -spec archive_clip(clip(), file:filename_all()) -> file:filename_all().
 archive_clip(Clip, Filename) ->
@@ -221,9 +225,9 @@ archive_clip(Clip, Filename) ->
     'ok' = filelib:ensure_dir(ArchivePath),
 
     case filelib:is_regular(ArchivePath) of
-        'true' -> 'ok';
+        'true' -> io:format("  exists: ~s~n", [ArchivePath]);
         'false' ->
-            io:format("copying ~s to ~s~n", [Filename, ArchivePath]),
+            io:format("  copying ~s to ~s~n", [Filename, ArchivePath]),
             {'ok', _} = file:copy(Filename, ArchivePath),
             'ok'
     end,
@@ -240,12 +244,9 @@ archive_clip_name(#clip{year=Year
                        }
                  ) ->
     Ext = filename:extension(OrigFilename),
-    iolist_to_binary(
-      io_lib:format("~s_~p-~p-~p_~p:~p_~p.~s"
-                   ,[Module, Year, Month, Day, Hour, Minute, Index, Ext]
-                   )
-     ).
-
+    iolist_to_binary(io_lib:format("~s_~w-~2..0w-~2..0w_~2..0w:~2..0w_~w~s"
+                                  ,[Module, Year, Month, Day, Hour, Minute, Index, Ext]
+                                  )).
 
 clip_archive() ->
     filename:join([code:priv_dir('cycliq'), ?CLIP_PATH]).

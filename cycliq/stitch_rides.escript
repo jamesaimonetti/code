@@ -64,7 +64,10 @@ opt_help(Options) ->
     proplists:get_value('help', Options, 'false').
 
 opt_archive(Options) ->
-    lists:keyfind('archive', 1, Options).
+    case lists:keyfind('archive', 1, Options) of
+        'false' -> 'undefined';
+        {'archive', Path} -> Path
+    end.
 
 opt_camera_type(Options) ->
     case lists:keyfind('camera', 1, Options) of

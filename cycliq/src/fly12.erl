@@ -13,40 +13,37 @@ grab_clip(Filename) ->
     clip_metadata(Filename).
 
 clip_metadata(Filename) ->
-    [Mo1, Mo2
-    ,D1, D2
-    ,H1, H2
-    ,M1, M2
-    ,$_
-     | Index
-    ]= filename:basename(Filename, ".MP4"),
+    case base_data(filename:basename(Filename, ".MP4")) of
+        'undefined' -> 'undefined';
+        BaseClip ->
+            [_, _, _, $_ | Year] = filename:basename(filename:dirname(Filename)),
 
-    [_, _, _, $_ | Year] = filename:basename(filename:dirname(Filename)),
+            BaseClip#clip{orig_path=Filename
+                         ,year=year(Year)
+                         ,module=?MODULE
+                         }
+    end.
 
-    #clip{orig_path=Filename
-         ,year=year(Year)
-         ,month=month([Mo1, Mo2])
-         ,day=day([D1, D2])
-         ,hour=hour([H1, H2])
-         ,minute=minute([M1, M2])
-         ,index=index(Index)
-         ,module=?MODULE
-         }.
+base_data([_|_]=Basename) ->
+    base_data(list_to_binary(Basename));
+base_data(<<Mo:2/binary
+            ,Day:2/binary
+            ,Hour:2/binary
+            ,Minute:2/binary
+            ,"_"
+            ,Index:4/binary
+          >>
+         ) ->
+    #clip{month=binary_to_integer(Mo)
+         ,day=binary_to_integer(Day)
+         ,hour=binary_to_integer(Hour)
+         ,minute=binary_to_integer(Minute)
+         ,index=binary_to_integer(Index)
+         };
+base_data(_Basename) ->
+    io:format("skipping base name ~s~n", [_Basename]),
+    'undefined'.
+
 
 year([_, _, _, _] = YearList) ->
     list_to_integer(YearList).
-
-month([_, _] = MonthList) ->
-    list_to_integer(MonthList).
-
-day([_, _] = DayList) ->
-    list_to_integer(DayList).
-
-hour([_, _] = HourList) ->
-    list_to_integer(HourList).
-
-minute([_, _] = MinuteList) ->
-    list_to_integer(MinuteList).
-
-index([_, _, _, _] = IndexList) ->
-    list_to_integer(IndexList).

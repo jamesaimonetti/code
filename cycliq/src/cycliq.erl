@@ -92,6 +92,7 @@ cleanup_intermediates(VideoName, Intermediates) ->
     end.
 
 -spec sort_clips_into_rides([clip()]) -> [ride()].
+sort_clips_into_rides([]) -> [];
 sort_clips_into_rides([Clip | Clips]) ->
     Ride = new_ride_from_clip(Clip),
 
@@ -158,14 +159,16 @@ grab_clips(CameraType, Path) ->
 grab_clips_from_archive() ->
     filelib:fold_files(clip_archive()
                       ,".*"
+                      ,'true'
                       ,fun grab_archive_clip/2
                       ,[]
                       ).
 
 grab_archive_clip(Filename, Acc) ->
-    [archive_clip_meta(list_to_binary(Filename))
-     | Acc
-    ].
+    case archive_clip_meta(list_to_binary(Filename)) of
+        'undefined' -> Acc;
+        Clip -> [Clip | Acc]
+    end.
 
 archive_clip_meta(<<"fly12_", Year:4/binary, "-", Month:2/binary, "-", Day:2/binary
                     ,"_", Hour:2/binary, ":", Minute:2/binary
@@ -196,7 +199,10 @@ archive_clip_meta(<<"fly6_", Year:4/binary, "-", Month:2/binary, "-", Day:2/bina
                 ,index=binary_to_integer(Index)
                 ,module='fly6'
                 },
-    Clip#clip{gregorian_seconds=start_seconds_from_clip(Clip)}.
+    Clip#clip{gregorian_seconds=start_seconds_from_clip(Clip)};
+archive_clip_meta(_Filename) ->
+    io:format("invalid clip name '~s'~n", [_Filename]),
+    'undefined'.
 
 grab_clip(Filename, {Module, Acc}) ->
     io:format("grabbing ~s~n", [Filename]),

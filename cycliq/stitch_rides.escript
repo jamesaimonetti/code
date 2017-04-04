@@ -8,7 +8,7 @@
 
 main([]) -> help();
 main(Args) ->
-    {'ok', {Options}} = getopt:parse(help_list(), Args),
+    {'ok', {Options, []}} = getopt:parse(help_list(), Args),
     process_request(Options).
 
 help() ->
@@ -69,13 +69,15 @@ opt_archive(Options) ->
 opt_camera_type(Options) ->
     case lists:keyfind('camera', 1, Options) of
         'false' -> "fly12";
-        "fly12"=CameraType -> CameraType;
-        "fly6"=CameraType -> CameraType;
-        _Type -> help()
+        {'camera', "fly12"=CameraType} -> CameraType;
+        {'camera', "fly6"=CameraType} -> CameraType;
+        {'camera', _Type} ->
+            io:format("invalid camera type ~p~n", [_Type]),
+            help()
     end.
 
 opt_stitch(Options) ->
-    proplists:get_value('stitch', Options).
+    proplists:get_value('stitch', Options, 'false').
 
 help_list() ->
     [{'archive',    $a,            "archive",    {'string', "/mnt"},  "Archive files from the memory card first"}

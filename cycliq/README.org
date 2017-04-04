@@ -7,7 +7,17 @@ From there, we can re-encode for YouTube uploads, do Picture-in-picture of the f
 ** Usage
 
 #+BEGIN_SRC shell
-./stitch_rides.escript [fly12 | fly6]
+./stitch_rides.escript -h
+Usage: ./stitch_rides.escript [-a [<archive>]] [-s] [-c [<camera>]]
+                              [--list-clips] [--list-rides] [-h]
+
+  -a, --archive  Archive files from the memory card first [default: /mnt]
+  -s, --stitch   Stitch together rides from clips
+  -c, --camera   Camera the files are being archived from (fly12 or fly6)
+                 [default: fly12]
+  --list-clips   List archived clips
+  --list-rides   List archived rides
+  -h, --help     Display this help
 #+END_SRC
 
 Assumes the memory card is mounted to =/mnt= and videos are in directories under =/mnt/DCIM=. Will pull clips into =priv/clips= and concat them into one video file in =priv/rides=.

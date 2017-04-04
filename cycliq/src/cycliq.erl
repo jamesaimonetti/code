@@ -12,6 +12,7 @@ archive(CameraType, Path) ->
 
 stitch() ->
     Clips = grab_clips_from_archive(),
+    io:format("clips: ~p~n", [Clips]),
     %% grab listing of all files on memory card
 
     %% sort into probable rides
@@ -164,12 +165,17 @@ grab_clips_from_archive() ->
                               ,fun grab_archive_clip/2
                               ,[]
                               ),
-    lists:keysort(#clip.gregorian_seconds, Clips).
+    lists:keysort(#clip.archive_path, Clips).
 
 grab_archive_clip(Filename, Acc) ->
     case archive_clip_meta(list_to_binary(filename:basename(Filename))) of
         'undefined' -> Acc;
-        Clip -> [Clip#clip{archive_path=Filename} | Acc]
+        Clip ->
+            [Clip#clip{archive_path=Filename
+                      ,gregorian_seconds=start_seconds_from_clip(Clip)
+                      }
+             |Acc
+            ]
     end.
 
 archive_clip_meta(<<"fly12_", Year:4/binary, "-", Month:2/binary, "-", Day:2/binary

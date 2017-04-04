@@ -120,7 +120,7 @@ new_ride_from_clip(#clip{module=M}=Clip) ->
          }.
 
 add_clips_to_ride(Ride, [LastClip | _]=RideClips) ->
-    Ride#ride{clips=lists:reverse(RideClips)
+    Ride#ride{clips=lists:keysort(#clip.gregorian_seconds, RideClips)
              ,end_time=end_seconds_from_clip(LastClip)
              }.
 
@@ -155,15 +155,16 @@ grab_clips(CameraType, Path) ->
                                         ,fun grab_clip/2
                                         ,{Module, []}
                                         ),
-    lists:keysort(#clip.orig_path, Clips).
+    lists:keysort(#clip.gregorian_seconds, Clips).
 
 grab_clips_from_archive() ->
-    filelib:fold_files(clip_archive()
-                      ,".*"
-                      ,'true'
-                      ,fun grab_archive_clip/2
-                      ,[]
-                      ).
+    Clips = filelib:fold_files(clip_archive()
+                              ,".*"
+                              ,'true'
+                              ,fun grab_archive_clip/2
+                              ,[]
+                              ),
+    lists:keysort(#clip.gregorian_seconds, Clips).
 
 grab_archive_clip(Filename, Acc) ->
     case archive_clip_meta(list_to_binary(filename:basename(Filename))) of

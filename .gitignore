@@ -5,3 +5,5 @@
 */deps/
 cycliq/priv/
 cycliq/_rel/
+/crypto/crypto.d
+crypto/ebin/*.beam

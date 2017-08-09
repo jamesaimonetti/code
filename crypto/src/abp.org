@@ -2,7 +2,7 @@
 
 More generically, solve =A/(B + C) + B/(A + C) + C/(A + B) = 4=
 
-I found [[http://www.doc.ic.ac.uk/~nd/surprise_96/journal/vol1/hmw/article1.html][this page]] useful in refreshing my understanding; it may be helpful to read (especially as it relates to how selection/crossover/mutation work in combination to affect the GA.
+I found [[http://www.doc.ic.ac.uk/~nd/surprise_96/journal/vol1/hmw/article1.html][this page]] useful in refreshing my understanding; it may be helpful to read (especially as it relates to how selection/crossover/mutation work in combination to affect the GA).
 
 First, let's get the Erlang stuff in place
 
@@ -94,7 +94,7 @@ The entry points into the GA.
 
 =rand:seed(exs1024)= is needed to increase the size of integers the RNG can produce.
 
-Another tweakable macro is =POPULATION= which currently sits at 40 genes in the pool. It should probably become configurable so you can play with bigger and smaller pools (which increase or decrease diversity/processing time).
+Another tweak-able macro is =POPULATION= which currently sits at 40 genes in the pool. It should probably become configurable so you can play with bigger and smaller pools (which increase or decrease diversity/processing time).
 
 #+BEGIN_SRC erlang :tangle "abp.erl"
 -spec solve() -> 'ok'.
@@ -172,7 +172,7 @@ Sort the gene pool by each gene's distance from the goal.
 
 We use the plists module to let us break the gene pool into sublists (using the Malt factor, in this case the population size (size of the pool) divided by 10. So we'll break the list into (40 div 10) = 4 sub-lists of 10 genes and spawn processes to work on those sub lists. Once finished, plists will recombine the lists and return to us the gene pool with fitness score and distance.
 
-We then run a list comprehension to filter out any genes with fitness = -1 (where two of the intergers are 0) - this is stored in =Calcd=. So we have a list of 3-tuples: ={Distance, Fitness, Gene}=. =lists:keysort/2= sorts using the =Distance= (element 1 in the 3-tuple) value to sort by. Now we now the result of sort_pool/1 will have the "fittest" gene (smallest distance) at the head of the list (and the next bestest as the second element).
+We then run a list comprehension to filter out any genes with fitness = -1 (where two of the integers are 0) - this is stored in =Calcd=. So we have a list of 3-tuples: ={Distance, Fitness, Gene}=. =lists:keysort/2= sorts using the =Distance= (element 1 in the 3-tuple) value to sort by. Now we now the result of sort_pool/1 will have the "fittest" gene (smallest distance) at the head of the list (and the next bestest as the second element).
 
 =distance/1= just computes the absolute value of =(Goal - Fitness)=.
 
@@ -256,7 +256,7 @@ procreate(G1, G2) ->
 
 Finally, we want to introduce mutations to keep our population diverse (and hopefully avoid concentrating on a local maxima).
 
-Basically, we iterate over every gene's expression and randomly (< 10% of the time) mutate the integer. So =mutate_gene/1= will extract each integer's bitstring and maybe add a new random factor to it (div'd by =?MAX_SIZE= to keep values contrained to our integer sizes).
+Basically, we iterate over every gene's expression and randomly (< 10% of the time) mutate the integer. So =mutate_gene/1= will extract each integer's bitstring and maybe add a new random factor to it (div'd by =?MAX_SIZE= to keep values constrained to our integer sizes).
 
 #+BEGIN_SRC erlang :tangle "abp.erl"
 mutate_pool(Pool) ->

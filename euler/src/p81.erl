@@ -19,10 +19,10 @@ answer() ->
     %% M = lists:map(fun erlang:list_to_integer/1, string:tokens(Str, [$\r, $\n, $,])),
     %% Len = round(math:sqrt(length(M))),
     M = [131,673,234,103,18
-    	 ,201,96,342,965,150
-    	 ,630,803,746,422,111
-    	 ,537,699,497,121,956
-    	 ,805,732,524,37,331
+        ,201,96,342,965,150
+        ,630,803,746,422,111
+        ,537,699,497,121,956
+        ,805,732,524,37,331
     	],
     Next = p12:triangle_iterator(),
     Len = round(math:sqrt(length(M))),
@@ -41,11 +41,10 @@ to_tri(M0, Len) ->
 				 {Take0 + X, Line ++ Acc}
 			 end, {Take+1, lists:reverse(Unchanged)}, lists:seq(Len-1, 1, -1)),
     lists:reverse(M).
-    
 
-% {Row,Col} is the Current Node we're looking at
-% We can sum it with the one below and one below and to the right, when stacked
-calc_routes(_M, Routes, _R, L, L1, [L1| _Next]) ->
+%% {Row,Col} is the Current Node we're looking at
+%% We can sum it with the one below and one below and to the right, when stacked
+calc_routes(_M, Routes, _R, _L, L1, [L1| _Next]) ->
     io:format("Final Routes ~p~n", [Routes]),
     Routes;
 calc_routes(M, Routes, R, L, L1, [T| Next]) when R > L ->
@@ -61,7 +60,7 @@ calc_routes(M, Routes, R, L, L1, [T| Next]) ->
 
 reduce(L) ->
     lists:reverse(lists:foldl(fun reduce/2, [], L)).
-% build backwards to take advantage of pattern matching
+                                                % build backwards to take advantage of pattern matching
 reduce([L, R], []) ->
     [R,L];
 reduce([L, R], [H | Acc]) ->
@@ -79,7 +78,7 @@ node_route(M, R, C, V) ->
 
 get_value(M, R, C) ->
     Pos = coor_to_pos(R, C),
-    case Pos > length(M) of 
+    case Pos > length(M) of
         true -> io:format("Died on {~p, ~p} -> ~p~n", [R, C, Pos]), error;
         _Else -> V = lists:nth(Pos, M),
 		 io:format("(~p, ~p) = ~p~n", [R, C, V]),

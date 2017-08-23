@@ -16,17 +16,20 @@ answer() ->
 
 find_answer([], _As, _Sums, S) -> S;
 find_answer([N | Ns], As, Sums, S) ->
-    NewSums = case is_abundant(N) of
-                  true -> NewAs = [N | As],
-                          lists:foldl(fun(Sum, Acc) -> rbdict:store(Sum, true, Acc) end, Sums, lists:map(fun(X) -> X+N end, NewAs));
-                  false -> NewAs = As,
-                           Sums
-              end,
+    {NextAs, NewSums} = case is_abundant(N) of
+                            true ->
+                                NewAs = [N | As],
+                                {NewAs
+                                ,lists:foldl(fun(Sum, Acc) -> rbdict:store(Sum, true, Acc) end, Sums, lists:map(fun(X) -> X+N end, NewAs))
+                                };
+                            false ->
+                                {As, Sums}
+                        end,
     NewSum = case rbdict:is_key(N, NewSums) of
                  true -> S;
                  false -> S+N
              end,
-    find_answer(Ns, NewAs, NewSums, NewSum).
+    find_answer(Ns, NextAs, NewSums, NewSum).
 
 is_abundant(N) ->
     my_math:d(N) > N.

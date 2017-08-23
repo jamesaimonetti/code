@@ -13,12 +13,12 @@
 %% What is the smallest odd composite that cannot be written as the sum of a prime and twice a square?
 
 answer() ->
-    prime_server:start_link(1000000),
+    {'ok', _} = prime_server:start_link(1000000),
     OddComposites = odd_composites(3, prime_server:sieve(999999)),
     find_first(OddComposites).
 
 find_first({O, _}) when O > 200000 -> io:format("Over 200000~n"),
-                                      0;
+                                     0;
 find_first({O, N}) ->
     case is_goldbach(O) of
         true -> find_first(N());
@@ -43,4 +43,3 @@ is_goldbach(N, [P|Ps], Sqrs) ->
         true -> true;
         false -> is_goldbach(N, Ps, Sqrs)
     end.
-            

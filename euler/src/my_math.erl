@@ -49,7 +49,7 @@ powerset(L) ->
     N = length(L),
     Max = trunc(math:pow(2,N)),
     [[lists:nth(Pos+1,L) || Pos <- lists:seq(0,N-1),
-                            I band (1 bsl Pos) =/= 0]
+                           I band (1 bsl Pos) =/= 0]
      || I <- lists:seq(0,Max-1)].
 
 fac(X) ->
@@ -72,6 +72,8 @@ fib(Nth) ->
 fib_generator() ->
     fib_generator(0, 1, 1).
 
+-type fib_generator() :: nonempty_improper_list({pos_integer(), pos_integer()}, fun(() -> fib_generator())).
+-spec fib_generator(non_neg_integer(), pos_integer(), pos_integer()) -> fib_generator().
 fib_generator(A, B, N) ->
     [{N,B} | fun() -> fib_generator(B, A+B, N+1) end ].
 

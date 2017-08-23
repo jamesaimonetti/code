@@ -14,7 +14,7 @@
 -compile(export_all).
 
 answer() ->
-    prime_server:start_link(200000),
+    {'ok', _} = prime_server:start_link(200000),
     Ans = find(2*3*5*7, 4, 0),
     prime_server:stop(),
     Ans.

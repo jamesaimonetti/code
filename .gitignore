@@ -6,3 +6,4 @@
 cycliq/priv/
 cycliq/_rel/
 /*/*.d
+/*/erl_crash.dump

@@ -1,0 +1,279 @@
+* Apple Banana Pineapple
+
+More generically, solve =A/(B + C) + B/(A + C) + C/(A + B) = 4=
+
+I found [[http://www.doc.ic.ac.uk/~nd/surprise_96/journal/vol1/hmw/article1.html][this page]] useful in refreshing my understanding; it may be helpful to read (especially as it relates to how selection/crossover/mutation work in combination to affect the GA).
+
+First, let's get the Erlang stuff in place
+
+** Module and exports
+First, we define our module and export a number of functions:
+- =solve/0=: Runs the GA until the solution is found or the default maximum number of generations is run.
+- =solve/1=: Same as =solve/0= but you can define the max number of generations
+- =fit/1=: The fitness function. Given the binary with A, B, and C encoded, calculate the equation's result. Mostly for testing.
+- =abp/0=: pulls the most recent "fittest" solution and decodes the binary into A, B, and C as integers
+- =abp/1=: decodes the binary into A, B, and C integers
+
+From the Erlang shell, you'd typically run =abp:solve()= or =abp:solve(N)= to evolve the population. You will get back either the solution or the current "best" solution as a tuple. You can then use =abp:abp()= to decode the binary to the three integers.
+#+BEGIN_SRC erlang :tangle "abp.erl"
+-module(abp).
+
+-export([solve/0
+        ,solve/1
+        ,fit/1
+
+        ,abp/0, abp/1
+        ]).
+#+END_SRC
+
+** Macros for integer sizes
+Determine the search space by having increasingly large integers. Currently 32, 64, and 128 bits can be used, per integer, to attempt to solve the problem. The generic macros =BYTES=, =SIZE=, and =MAX_SIZE= are used in the code so you only need to change which integer size macros in one place.
+
+To add a new integer size (say 256), you would define them as:
+#+BEGIN_EXAMPLE
+-define(INT256, 256).
+-define(INT256_SIZE, 115792089237316195423570985008687907853269984665640564039457584007913129639936). % round(math:pow(2, ?INT256))
+-define(INT256_BYTES, 3 * ?INT256). % size of the binary encoding the 3 integers
+#+END_EXAMPLE
+
+Also define the default number of generations to use when calling =solve/0= and the goal desired.
+
+#+BEGIN_SRC erlang :tangle "abp.erl"
+-define(INT128, 128).
+-define(INT128_SIZE, 340282366920938463463374607431768211456).
+-define(INT128_BYTES, 384).
+
+-define(INT64, 64).
+-define(INT64_SIZE, 18446744073709551616).
+-define(INT64_BYTES, 192).
+
+-define(INT32, 32).
+-define(INT32_SIZE, 4294967296).
+-define(INT32_BYTES, 96).
+
+-define(BYTES, ?INT128_BYTES).
+-define(SIZE, ?INT128).
+-define(MAX_SIZE, ?INT128_SIZE).
+
+-define(GENERATIONS, 1000).
+-define(GOAL, 4.0).
+#+END_SRC
+
+** apb/0 and abp/1
+
+After =solve/{0,1}= runs, the "fittest" solution found is stored in the process dictionary. You can call =abp:abp()= to use that binary to extract the ={A,B,C}= tuple. You can also supply the result of =solve/{0,1}= to extract ={A,B,C}= using =abp/1=.
+
+#+BEGIN_SRC erlang :tangle "abp.erl"
+-spec abp() ->
+                 'undefined' |
+                 {pos_integer(), pos_integer(), pos_integer()}.
+-spec abp('undefined' | binary() | tuple()) ->
+                 'undefined' |
+                 {pos_integer(), pos_integer(), pos_integer()}.
+abp() ->
+    abp(get('fittest')).
+
+abp('undefined') -> 'undefined';
+abp(<<Apple:?INT128/integer, Banana:?INT128/integer, Pineapple:?INT128/integer>>) ->
+    {Apple, Banana, Pineapple};
+abp(<<Apple:?INT64/integer, Banana:?INT64/integer, Pineapple:?INT64/integer>>) ->
+    {Apple, Banana, Pineapple};
+abp(<<Apple:?INT32/integer, Banana:?INT32/integer, Pineapple:?INT32/integer>>) ->
+    {Apple, Banana, Pineapple};
+abp({'give_up', _Runs, _Fitness, ABP}) ->
+    abp(ABP);
+abp({'found', _Generation, ABP}) ->
+    abp(ABP).
+#+END_SRC
+
+** solve/0 and solve/1
+
+The entry points into the GA.
+
+=solve/1= first checks the process dictionary for the "fittest" from the last run and includes it in the initial gene pool; otherwise it just starts with random genes only. This has proven to be useful in not having to spend a lot of generations, on each run, getting back to a reasonable fitness level. But we still have a nicely random pool to start from to hopefully not get stuck at a local maximum.
+
+=rand:seed(exs1024)= is needed to increase the size of integers the RNG can produce.
+
+Another tweak-able macro is =POPULATION= which currently sits at 40 genes in the pool. It should probably become configurable so you can play with bigger and smaller pools (which increase or decrease diversity/processing time).
+
+#+BEGIN_SRC erlang :tangle "abp.erl"
+-spec solve() -> 'ok'.
+-spec solve(integer()) -> 'ok'.
+solve() ->
+    solve(?GENERATIONS).
+solve(Max) ->
+    rand:seed(exs1024),
+    case get('fittest') of
+        <<_:?SIZE/integer, _:?SIZE/integer, _:?SIZE/integer>>=Fittest ->
+            solve(1, Max, [Fittest | gene_pool()]);
+        _ ->
+            solve(1, Max, gene_pool())
+    end.
+
+-define(POPULATION, 40).
+gene_pool() ->
+    [gene() || _ <- lists:seq(1, ?POPULATION)].
+
+gene() ->
+    <<(rand:uniform(?MAX_SIZE)):?SIZE/integer
+      ,(rand:uniform(?MAX_SIZE)):?SIZE/integer
+      ,(rand:uniform(?MAX_SIZE)):?SIZE/integer
+    >>.
+
+#+END_SRC
+
+** solve/3 and solve/4
+Now we get into the meat of the GA.
+
+The generic algorithm can be described as:
+1. Apply the fitness function to each gene
+  a. calculate the "distance" from the goal
+    - strip out any combo where any two of ={A, B, C}= are 0
+  b. sort based on distance to get the "closest"(smallest) distance
+2. Based on sort results:
+  a. If no results, mutate existing gene pool and start again
+  b. If only one result, assume it is the fittest and include the head of the existing gene pool for mating
+  c. If 2 or more, use first as "fittest" of this generation and second as "next bestest" for mating"
+3. Calculate the next generation:
+  a. If max generations have been run, give up and return the fittest gene.
+  b. If the fitness of the fittest gene is the goal, return the gene
+  c. Crossover(mate) the fittest and next bestest until a new gene pool is created
+4. With the new gene pool, apply mutations randomly
+5. Go to (1)
+
+#+BEGIN_SRC erlang :tangle "abp.erl"
+solve(Generation, Max, GenePool) ->
+    case sort_pool(GenePool) of
+        [] -> solve(Generation+1, Max, mutate(GenePool));
+        [{_Distance, Fitness, Fittest}] ->
+            solve(Generation, Max, Fitness, Fittest, hd(GenePool));
+        [{_Distance, Fitness, Fittest}
+        ,{_, _, NextBestest}
+         | _Rest
+        ] ->
+            solve(Generation, Max, Fitness, Fittest, NextBestest)
+    end.
+
+solve(Max, Max, Fitness, Fittest, _) ->
+    {'give_up', Max, Fitness, Fittest};
+solve(Generation, _Max, Fitness, Fittest, _NextBestest)
+  when Fitness == ?GOAL ->
+    {'found', Generation, Fittest};
+solve(Generation, Max, _Fitness, Fittest, NextBestest) ->
+    _ = put('fittest', Fittest),
+    NewPool = [Fittest | crossover(Fittest, NextBestest)],
+    solve(Generation+1, Max, mutate_pool(NewPool)).
+
+#+END_SRC
+
+** sort_pool/1 and friends
+
+Sort the gene pool by each gene's distance from the goal.
+
+We use the plists module to let us break the gene pool into sublists (using the Malt factor, in this case the population size (size of the pool) divided by 10. So we'll break the list into (40 div 10) = 4 sub-lists of 10 genes and spawn processes to work on those sub lists. Once finished, plists will recombine the lists and return to us the gene pool with fitness score and distance.
+
+We then run a list comprehension to filter out any genes with fitness = -1 (where two of the integers are 0) - this is stored in =Calcd=. So we have a list of 3-tuples: ={Distance, Fitness, Gene}=. =lists:keysort/2= sorts using the =Distance= (element 1 in the 3-tuple) value to sort by. Now we now the result of sort_pool/1 will have the "fittest" gene (smallest distance) at the head of the list (and the next bestest as the second element).
+
+=distance/1= just computes the absolute value of =(Goal - Fitness)=.
+
+=fit/1= decodes the binary and =fit/3= calculates the fitness based on those integers.
+
+#+BEGIN_SRC erlang :tangle "abp.erl"
+sort_pool(GenePool) ->
+    Calcd = [C || {_, Fitness, _}=C <-
+                      plists:map(fun(Gene) ->
+                                         Fitness = fit(Gene),
+                                         {distance(Fitness), Fitness, Gene}
+                                 end
+                                ,GenePool
+                                ,?POPULATION div 10
+                                ),
+                  Fitness =/= -1
+            ],
+    lists:keysort(1, Calcd).
+
+distance(Fitness) ->
+    abs(?GOAL - Fitness).
+
+-spec fit({pos_integer(), pos_integer(), pos_integer()}) -> float().
+fit(<<Apple:?SIZE/integer, Banana:?SIZE/integer, Pineapple:?SIZE/integer>>) ->
+    fit(Apple, Banana, Pineapple).
+
+fit(0, 0, _) -> -1;
+fit(_, 0, 0) -> -1;
+fit(0, _, 0) -> -1;
+fit(Apple, Banana, Pineapple) ->
+    (Apple / (Banana + Pineapple))
+        + (Banana / (Apple + Pineapple))
+        + (Pineapple / (Apple + Banana)).
+
+#+END_SRC
+
+** crossover/2
+
+Using the two best genes of the generation, create children based on the genes, using random cut points to create different children each time, until a next generation pool is created.
+
+The fold creates two children based on the two parent genes and adds them to the pool (=Acc=).
+
+=procreate/2= creates two random cut points (or locus points) to select gene segments from. Earlier versions used a single locus point; it may be fun to try more locus points (maybe even scale it based on integer size) to see if it converges faster.
+
+This function also shows the power of Erlang's bit syntax, as we create the cut points and bind them out of the parent genes, re-assembling them into children genes with 4 lines of code. Pretty cool.
+
+#+BEGIN_EXAMPLE
+G1 = <<0,1,2,3,4>>,
+G2 = <<9,8,7,6,5>>,
+Point1 = 2,
+Point2 = 4,
+
+C1 = <<0,1,7,6,4>>
+C2 = <<9,8,2,3,5>>
+#+END_EXAMPLE
+
+#+BEGIN_SRC erlang :tangle "abp.erl"
+crossover(G1, G2) ->
+    {_, _, Acc} = lists:foldl(fun crossover_fold/2, {G1, G2, []}, lists:seq(1, ?POPULATION div 2)),
+    Acc.
+
+crossover_fold(_, {G1, G2, Pool}) ->
+    {G1Prime, G2Prime} = procreate(G1, G2),
+    {G1, G2, [G1Prime, G2Prime | Pool]}.
+
+procreate(G1, G2) ->
+    Point = rand:uniform(?BYTES-3),
+    Point2 = rand:uniform(?BYTES - Point - 1),
+    RestLen = ?BYTES - Point - Point2,
+
+    <<G1Part1:Point/bitstring, G1Part2:Point2/bitstring, G1Part3:RestLen/bitstring>> = G1,
+    <<G2Part1:Point/bitstring, G2Part2:Point2/bitstring, G2Part3:RestLen/bitstring>> = G2,
+
+    {<<G1Part1:Point/bitstring, G2Part2:Point2/bitstring, G1Part3:RestLen/bitstring>>
+    ,<<G2Part1:Point/bitstring, G1Part2:Point2/bitstring, G2Part3:RestLen/bitstring>>
+    }.
+
+#+END_SRC
+
+** mutate_pool/1
+
+Finally, we want to introduce mutations to keep our population diverse (and hopefully avoid concentrating on a local maxima).
+
+Basically, we iterate over every gene's expression and randomly (< 10% of the time) mutate the integer. So =mutate_gene/1= will extract each integer's bitstring and maybe add a new random factor to it (div'd by =?MAX_SIZE= to keep values constrained to our integer sizes).
+
+#+BEGIN_SRC erlang :tangle "abp.erl"
+mutate_pool(Pool) ->
+    [mutate_gene(Gene) || Gene <- Pool].
+
+mutate_gene(Gene) ->
+    << <<(mutate(X)):?SIZE/integer>> || <<X:?SIZE/integer>> <= Gene >>.
+
+mutate(X) ->
+    case rand:uniform() < 0.1 of
+        'true' -> up_or_down(X);
+        'false' -> X
+    end.
+
+up_or_down(X) ->
+    up_or_down(X, rand:uniform(2), rand:uniform(?MAX_SIZE)).
+up_or_down(X, 1, Factor) -> (X-Factor) div ?MAX_SIZE;
+up_or_down(X, 2, Factor) -> (X+Factor) div ?MAX_SIZE.
+
+#+END_SRC

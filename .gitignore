@@ -7,3 +7,5 @@ cycliq/priv/
 cycliq/_rel/
 /*/*.d
 /*/erl_crash.dump
+/*/.emacs.d
+/crypto/src/abp.erl

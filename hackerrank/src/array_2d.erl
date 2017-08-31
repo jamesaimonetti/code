@@ -86,7 +86,7 @@ main() ->
     io:format("~p~n", [MaxSum]).
 
 max_sum(Array) ->
-    max_sum(Array, 0).
+    max_sum(Array, (-9 * 6)).
 
 max_sum([_], Max) -> Max;
 max_sum([_, _], Max) -> Max;
@@ -128,3 +128,18 @@ to_vs(StrVs) when is_list(StrVs) ->
     [to_n(V) || V <- string:tokens(StrVs -- [$\n], " ")];
 to_vs(BinVs) when is_binary(BinVs) ->
     [to_n(V) || V <- binary:split(BinVs, <<" ">>, ['global'])].
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+tc3_test() ->
+    Array = [[-1, -1, 0, -9, -2, -2]
+            ,[-2, -1, -6, -8, -2, -5]
+            ,[-1, -1, -1, -2, -3, -4]
+            ,[-1, -9, -2, -4, -4, -5]
+            ,[-7, -3, -3, -2, -9, -9]
+            ,[-1, -3, -1, -2, -4, -5]
+            ],
+    ?assertEqual(-6, max_sum(Array)).
+
+-endif.

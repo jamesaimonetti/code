@@ -12,3 +12,9 @@ Scripts for reading files from the memory card of a Cycliq Fly6 / Fly12, stitchi
 
 Code related to crypto stuff.
 - =abp.erl= is the apple-banana-pineapple genetic algorithm solver.
+** HackerRank
+Code to solve hackerrank problems
+** Euler
+Project Euler problems and code to solve them
+** DBus Emacs-Slack Logging
+Log messages received from slack via emacs-slack

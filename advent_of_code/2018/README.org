@@ -4,6 +4,8 @@
 
 The Advent of Code are programming challenges released daily during the month of December. This directory is my Erlang solutions to the problems as well as annontations on the code to help beginners see some of my reasoning for why I did what I did.
 
+All the code will be in ={problemX}.escript= and will be executable as =./{problemX}.escript=.
+
 * Problem 1 - https://adventofcode.com/2018/day/1
 ** Part 1
 Below the message, the device shows a sequence of changes in frequency (your puzzle input). A value like +6 means the current frequency increases by 6; a value like -3 means the current frequency decreases by 3.
@@ -47,3 +49,11 @@ Here are other examples:
     +7, +7, -2, -7, -4 first reaches 14 twice.
 
 What is the first frequency your device reaches twice?
+** Solutions
+#+BEGIN_SRC bash
+./p1.escript
+#+END_SRC
+
+#+RESULTS:
+| p1_1: |   459 |
+| p2_2: | 65474 |

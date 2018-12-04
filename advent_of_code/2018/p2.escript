@@ -10,11 +10,12 @@
 main(_) ->
     IDs = ids(),
     P2_1 = p2_1(IDs),
-    io:format("p2_1: ~p~n", [P2_1]).
+    P2_2 = p2_2(IDs),
+    io:format("p2_1: ~p~np2_2: ~s~n", [P2_1, P2_2]).
 
 ids() ->
     {'ok', Bin} = file:read_file("p2.txt"),
-    binary:split(Bin, <<"\n">>, ['global']).
+    [ID || ID <- binary:split(Bin, <<"\n">>, ['global']), byte_size(ID) > 0].
 
 p2_1(IDs) ->
     {Twos, Threes} = lists:foldl(fun count_repetitions/2, {0, 0}, IDs),
@@ -40,3 +41,39 @@ count_char(Char, {Char, Count, Counts}) ->
     {Char, Count+1, Counts};
 count_char(NewChar, {OldChar, Count, Counts}) ->
     {NewChar, 1, [{OldChar, Count}|Counts]}.
+
+p2_2(IDs) ->
+    Summed = lists:keysort(1, [{lists:sum(binary_to_list(S)), S} || S <- IDs]),
+    find_neighbors(Summed).
+
+find_neighbors([ID1 | IDs]) ->
+    case find_neighbors(ID1, IDs) of
+        'false' -> find_neighbors(IDs);
+        Common -> Common
+    end.
+
+find_neighbors(_ID, []) -> 'false';
+find_neighbors({Sum1, ID1}, [{Sum2, ID2} | IDs]) when Sum2 - Sum1 < $z ->
+    case one_char_off(ID1, ID2) of
+        'false' -> find_neighbors({Sum1, ID1}, IDs);
+        Common -> Common
+    end.
+
+
+one_char_off(ID1, ID2) ->
+    Size = byte_size(ID1),
+
+    PrefixPlusSuffix = binary:longest_common_suffix([ID1, ID2]) +
+        binary:longest_common_prefix([ID1, ID2]),
+
+    case Size - PrefixPlusSuffix of
+        1 -> one_char_off(ID1, ID2, []);
+        _ -> 'false'
+    end.
+
+one_char_off(<<>>, <<>>, Common) -> list_to_binary(lists:reverse(Common));
+one_char_off(<<C, ID1/binary>>, <<C, ID2/binary>>, Common) ->
+    one_char_off(ID1, ID2, [C | Common]);
+one_char_off(<<_, ID/binary>>, <<_, ID/binary>>, Common) ->
+    iolist_to_binary([lists:reverse(Common), ID]);
+one_char_off(_ID1, _ID2, _Common) -> 'false'.

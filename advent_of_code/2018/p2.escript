@@ -63,17 +63,14 @@ find_neighbors({Sum1, ID1}, [{Sum2, ID2} | IDs]) when Sum2 - Sum1 < $z ->
 one_char_off(ID1, ID2) ->
     Size = byte_size(ID1),
 
-    PrefixPlusSuffix = binary:longest_common_suffix([ID1, ID2]) +
-        binary:longest_common_prefix([ID1, ID2]),
+    Suffix = binary:longest_common_suffix([ID1, ID2]),
+    Prefix = binary:longest_common_prefix([ID1, ID2]),
 
-    case Size - PrefixPlusSuffix of
-        1 -> one_char_off(ID1, ID2, []);
+    case Size - (Prefix + Suffix) of
+        1 -> common_chars(Prefix, Suffix, ID1);
         _ -> 'false'
     end.
 
-one_char_off(<<>>, <<>>, Common) -> list_to_binary(lists:reverse(Common));
-one_char_off(<<C, ID1/binary>>, <<C, ID2/binary>>, Common) ->
-    one_char_off(ID1, ID2, [C | Common]);
-one_char_off(<<_, ID/binary>>, <<_, ID/binary>>, Common) ->
-    iolist_to_binary([lists:reverse(Common), ID]);
-one_char_off(_ID1, _ID2, _Common) -> 'false'.
+common_chars(PrefixCount, SuffixCount, ID) ->
+    <<Prefix:PrefixCount/binary, _, Suffix:SuffixCount/binary>> = ID,
+    <<Prefix/binary, Suffix/binary>>.

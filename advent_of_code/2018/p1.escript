@@ -3,6 +3,8 @@
 %% -*- coding: utf-8 -*-
 -mode('compile').
 
+%% Run as ./p1.escript
+
 -export([main/1]).
 
 main(_) ->

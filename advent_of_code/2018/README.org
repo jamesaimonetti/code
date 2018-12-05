@@ -153,4 +153,5 @@ What is the ID of the only claim that doesn't overlap?
 #+END_SRC
 
 #+RESULTS:
-: p3_1: 105047
+| p3_1: | 105047 |
+| p3_2: |    658 |

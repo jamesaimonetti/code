@@ -10,11 +10,12 @@
 main(_) ->
     Claims = claims(),
     P3_1 = p3_1(Claims),
-    io:format("p3_1: ~p~n", [P3_1]).
+    P3_2 = p3_2(Claims),
+    io:format("p3_1: ~p~np3_2: ~s~n", [P3_1, P3_2]).
 
 claims() ->
     {'ok', Bin} = file:read_file("p3.txt"),
-    %% Bin = <<"#1 @ 1,3: 4x4\n#2 @ 3,1: 4x4\n#3 @ 4,4: 3x3\n#4 @ 0,6: 2x2\n">>,
+    %% Bin = <<"#1 @ 1,3: 4x4\n#2 @ 3,1: 4x4\n#3 @ 5,5: 2x2\n#4 @ 0,6: 2x2\n">>,
     [claim(Claim) || Claim <- binary:split(Bin, <<"\n">>, ['global']), byte_size(Claim) > 0].
 
 claim(ClaimBin) ->
@@ -31,9 +32,6 @@ claim(_ClaimBin, {'match', [ClaimId, OffsetLeftEdge, OffsetTopEdge, WidthBin, He
     ,'right' => Left + Width - 1
     ,'top' => Top
     ,'bottom' => Top + Height - 1
-     %% ,'width' => Width
-     %% ,'height' => Height
-     %% ,'area' => Width * Height
     }.
 
 p3_1(Claims) ->
@@ -52,11 +50,10 @@ p3_1([Claim | Claims], Overlaps) ->
     p3_1(Claims, Updated).
 
 add_overlap(Claim, {BaseClaim, Overlaps}) ->
-    {BaseClaim, calculate_overlap(Claim, BaseClaim, Overlaps)}.
+    {BaseClaim, calculate_overlap(Claim, BaseClaim) ++ Overlaps}.
 
 calculate_overlap(#{'id' := _ID1, 'top' := T1, 'left' := L1, 'bottom' := B1, 'right' := R1}
                  ,#{'id' := _ID2, 'top' := T2, 'left' := L2, 'bottom' := B2, 'right' := R2}
-                 ,Overlaps
                  ) ->
     %% In the problem's data:
     %% Claim #: {T, L} {B, R}
@@ -68,19 +65,11 @@ calculate_overlap(#{'id' := _ID1, 'top' := T1, 'left' := L1, 'bottom' := B1, 'ri
               },
     %% overlap: {{5,4},{5,4}}
 
+    %% {Top, Left} is closest to 0,0
+    %% {Bottom, Right} should be further away
     case Overlap of
-        %% No overlaps
-        {{R, L}, {T, B}} when R < L, T < B -> Overlaps;
-
-        %% Overlap on a single point
-        {{X, X}, {Y, Y}} -> [{X, Y} | Overlaps];
-
-        %% No X overlap
-        {{R, L}, _Y} when R < L -> Overlaps;
-
-        %% No Y overlap
-        {_X, {T, B}} when T < B -> Overlaps;
-
+        %% No overlaps, R is before L, T is below B
+        {{R, L}, {T, B}} when R < L; T < B -> [];
         {{R, L}, {T, B}} ->
             %% We compute the intersection rectangle:
             ITop = max(T1, T2),
@@ -92,8 +81,43 @@ calculate_overlap(#{'id' := _ID1, 'top' := T1, 'left' := L1, 'bottom' := B1, 'ri
             %% intersection rect: {4, 4} {5, 5}
 
             %% We add the intersection points to the list of overlaps
-            XYs = [{X, Y} || X <- lists:seq(ILeft, IRight),
-                            Y <- lists:seq(ITop, IBot)
-                  ],
-            XYs ++ Overlaps
+            [{X, Y} || X <- lists:seq(ILeft, IRight),
+                      Y <- lists:seq(ITop, IBot)
+            ]
     end.
+
+%% We track the set of all Claim IDs and the set of all Claim IDs that have at least one overlapping claim
+p3_2(Claims) ->
+    find_unique_claim(Claims, sets:new(), sets:new()).
+
+find_unique_claim([], AllIDs, OverlapIDs) ->
+    %% Unique = {AllIds} - {OverlapIds}
+    [Id] = sets:to_list(sets:subtract(AllIDs, OverlapIDs)),
+    Id;
+find_unique_claim([#{'id' := Id}=Claim | Claims], AllIDs, OverlapIDs) ->
+    case find_overlaps(Claim, Claims) of
+        %% If only the base claim is returned, this Id had no overlaps with the rest of the claims
+        %% (may still have been overlapped by earlier claims
+        [Id] -> find_unique_claim(Claims, sets:add_element(Id, AllIDs), OverlapIDs);
+
+        %% If the Claim has overlaps, add all those IDs to the Overlap set
+        Overlaps -> find_unique_claim(Claims, sets:add_element(Id, AllIDs), lists:foldl(fun sets:add_element/2, OverlapIDs, Overlaps))
+    end.
+
+find_overlaps(#{'id' := BaseId}=BaseClaim, Claims) ->
+    %% foreach claim
+    %%   if BaseClaim and Claim have an overlap, add Claim to the list
+    lists:foldl(fun(#{'id' := ID}=Claim, Os) ->
+                        case has_overlap(BaseClaim, Claim) of
+                            'true' -> [ID | Os];
+                            'false' -> Os
+                        end
+                end
+                %% init the accumulator so BaseId is included if overlaps are found
+               ,[BaseId]
+               ,Claims
+               ).
+
+%% Two claims overlap if the their overlap is a non-empty list of coordinates
+has_overlap(Claim1, Claim2) ->
+    [] =/= calculate_overlap(Claim1, Claim2).

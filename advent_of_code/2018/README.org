@@ -219,4 +219,5 @@ What is the ID of the guard you chose multiplied by the minute you chose? (In th
 #+END_SRC
 
 #+RESULTS:
-: p4_1: 76357
+| p4_1: | 76357 |
+| p4_2: | 41668 |

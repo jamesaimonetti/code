@@ -8,11 +8,12 @@
 main(_) ->
     GuardTimes = guard_times(),
     P4_1 = p4_1(GuardTimes),
-    io:format("p4_1: ~p~n", [P4_1]).
+    P4_2 = p4_2(GuardTimes),
+    io:format("p4_1: ~p~np4_2: ~p~n", [P4_1, P4_2]).
 
 p4_1(GuardTimes) ->
     SleepyGuard = find_sleepiest_guard(GuardTimes),
-    SleepiestMinute = find_sleepiest_minute(GuardTimes, SleepyGuard),
+    {SleepiestMinute, _Count} = find_sleepiest_minute(GuardTimes, SleepyGuard),
     SleepyGuard * SleepiestMinute.
 
 find_sleepiest_guard([{Guard, _Time, 'awake'} | GuardTimes]) ->
@@ -33,11 +34,17 @@ find_sleepiest_guard([{NewGuard, _StartTime, 'awake'} | GuardTimes]
     find_sleepiest_guard(GuardTimes, {NewGuard, SleepCounters}).
 
 find_sleepiest_minute(GuardTimes, SleepyGuard) ->
-    GuardSchedule = lists:keysort(1, [{Time, State} || {G, Time, State} <- GuardTimes, G =:= SleepyGuard]),
+    GuardSchedule = guard_schedule(GuardTimes, SleepyGuard),
 
     Minutes = guard_sleep_schedule(GuardSchedule, #{}),
-    [{Minute, _Slept}|_] = lists:reverse(lists:keysort(2, maps:to_list(Minutes))),
-    Minute.
+
+    case lists:reverse(lists:keysort(2, maps:to_list(Minutes))) of
+        [] -> {0, 0};
+        [{Minute, Count}|_] -> {Minute, Count}
+    end.
+
+guard_schedule(GuardTimes, Guard) ->
+    lists:keysort(1, [{Time, State} || {G, Time, State} <- GuardTimes, G =:= Guard]).
 
 guard_sleep_schedule([], Minutes) -> Minutes;
 guard_sleep_schedule([{_Awake, 'awake'} | Times], Minutes) ->
@@ -71,6 +78,21 @@ next_minute({Year, Month, Day, Hour, Min}) ->
 
 to_minutes({_Y, _M, D, H, Min}) ->
     Min + (H * 60) + (D * 24 * 60).
+
+p4_2(GuardTimes) ->
+    Guards = [Guard || {Guard, _Time, _Status} <- GuardTimes],
+    {_, {Guard, Minute, _Count}} = lists:foldl(fun sleepiest_minute/2
+                                              ,{GuardTimes, {0, 0, 0}}
+                                              ,Guards
+                                              ),
+    Guard * Minute.
+
+sleepiest_minute(Guard, {GuardTimes, {_WinGuard, _WinMinute, WinCount}}=Acc) ->
+    case find_sleepiest_minute(GuardTimes, Guard) of
+        {SleepiestMinute, SleepiestCount} when SleepiestCount > WinCount ->
+            {GuardTimes, {Guard, SleepiestMinute, SleepiestCount}};
+        _Minute  -> Acc
+    end.
 
 guard_times() ->
     {'ok', Bin} = file:read_file("p4.txt"),

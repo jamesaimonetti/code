@@ -221,3 +221,10 @@ What is the ID of the guard you chose multiplied by the minute you chose? (In th
 #+RESULTS:
 | p4_1: | 76357 |
 | p4_2: | 41668 |
+* Problem 5 - https://adventofcode.com/2018/day/5
+** Part 1
+** Part 2
+** Solution
+#+BEGIN_SRC bash
+./p5.escript
+#+END_SRC

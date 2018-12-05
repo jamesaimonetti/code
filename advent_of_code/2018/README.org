@@ -146,3 +146,6 @@ If the Elves all proceed with their own plans, none of them will have enough fab
 #+BEGIN_SRC bash
 ./p3.escript
 #+END_SRC
+
+#+RESULTS:
+: p3_1: 105047

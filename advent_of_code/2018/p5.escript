@@ -8,7 +8,8 @@
 main(_) ->
     Polymer = polymer(),
     P5_1 = p5_1(Polymer),
-    io:format("p5_1: ~p~n", [P5_1]).
+    P5_2 = p5_2(Polymer),
+    io:format("p5_1: ~p~np5_2: ~p~n", [P5_1, P5_2]).
 
 p5_1(Polymer) ->
     Result = reaction(Polymer, [], 'false'),
@@ -33,6 +34,24 @@ reaction(<<Little, Big, Rest/binary>>, Result, _Reacted) when abs(Little - Big) 
 %% collect the unreacted unit in result
 reaction(<<Unit, Rest/binary>>, Result, Reacted) ->
     reaction(Rest, [Unit | Result], Reacted).
+
+p5_2(Polymer) ->
+    Units = lists:seq($a, $z),
+    {_, Length} = lists:foldl(fun find_bad_unit/2, {Polymer, byte_size(Polymer)}, Units),
+    Length.
+
+find_bad_unit(Unit, {Polymer, SmallestLength}) ->
+    Shortened = remove_unit(Unit, Polymer),
+    Reacted = reaction(Shortened, [], 'false'),
+    case byte_size(Reacted) of
+        ReactedSize when ReactedSize < SmallestLength -> {Polymer, ReactedSize};
+        _Size -> {Polymer, SmallestLength}
+    end.
+
+%% remove all instances of the unit and its opposite polarity
+remove_unit(Unit, Polymer) ->
+    << <<U>> || <<U>> <= Polymer, U =/= Unit, U =/= (Unit - 32) >>.
+
 
 polymer() ->
     {'ok', Bin} = file:read_file("p5.txt"),

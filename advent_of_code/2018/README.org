@@ -228,3 +228,7 @@ What is the ID of the guard you chose multiplied by the minute you chose? (In th
 #+BEGIN_SRC bash
 ./p5.escript
 #+END_SRC
+
+#+RESULTS:
+| p5_1: | 10708 |
+| p5_2: |  5330 |

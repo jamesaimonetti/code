@@ -9,9 +9,10 @@ Reading [[http://raganwald.com/2016/12/27/recursive-data-structures.html][this b
 
 Scripts for reading files from the memory card of a Cycliq Fly6 / Fly12, stitching them together, Picture-in-picture, uploading to Youtube, etc.
 ** Crypto
-
 Code related to crypto stuff.
 - =abp.erl= is the apple-banana-pineapple genetic algorithm solver.
+** Cryptopals
+Erlang solutions to https://cryptopals.com/sets/1
 ** HackerRank
 Code to solve hackerrank problems
 ** Euler

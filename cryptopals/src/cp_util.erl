@@ -2,6 +2,7 @@
 
 -export([hex_to_base64/1
         ,fixed_xor/2
+        ,from_hex/1, to_hex/1
         ]).
 
 hex_to_base64(HexBin) ->
@@ -12,6 +13,9 @@ fixed_xor(Buffer1, Buffer2) ->
     Str1 = from_hex(Buffer1, []),
     Str2 = from_hex(Buffer2, []),
     to_hex(crypto:exor(Str1, Str2)).
+
+from_hex(Buffer) ->
+    from_hex(Buffer, []).
 
 from_hex(<<>>, Acc) -> lists:reverse(Acc);
 from_hex(<<Div, Rem, T/binary>>, Acc) ->
